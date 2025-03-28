@@ -7,7 +7,7 @@ from models import Hero, HeroPower, Power, db, migrate, app
 def index():
     return make_response({"message":"app running"}, 200)
 
-@app.route("/heroes")
+@app.route("/heroes", methods=["GET"])
 def heroes():
     heroes = Hero.query.all()
     hero_list = []
@@ -15,13 +15,41 @@ def heroes():
         hero_list.append(hero.to_dict(only=["id", "name", "super_name"]))
     return jsonify(hero_list)
 
-@app.route("/powers")
+@app.route("/heroes/<int:hero_id>", methods=["GET"])
+def get_hero(hero_id):
+    hero = Hero.query.filter_by(id = hero_id).first()
+
+    if not hero:
+        return jsonify({"error": "Hero not found"})
+    
+    hero_res = hero.to_dict(only=["id", "name", "super_name"])
+
+    hp = HeroPower.query.filter_by(hero_id = hero.id).first()
+    hp = hp.to_dict(only=["id", "strength", "hero_id", "power_id"])
+
+    power = Power.query.filter_by(id=hp["power_id"]).first()
+
+    hp["power"] = power.to_dict(only=["id", "name", "description"])
+    hero_res["hero_powers"] = hp
+
+    return jsonify(hero_res)
+
+@app.route("/powers", methods=["GET"])
 def powers():
     powers = Power.query.all()
     power_list = []
     for power in powers:
         power_list.append(power.to_dict(only=["id", "name", "description"]))
     return jsonify(power_list)
+
+@app.route("/powers/<int:id>", methods=["GET"])
+def get_power(id):
+    powers = Power.query.filter_by(id=id).first()
+    
+    if not powers:
+        return jsonify({"error":"Power not found"})
+    
+    return jsonify(powers.to_dict(only=["id", "name", "description"]))
 
 @app.route("/hero-powers")
 def hero_powers():
