@@ -1,11 +1,10 @@
 from flask import request, jsonify, make_response
 from models import Hero, HeroPower, Power, db, migrate, app
 
-
-
 @app.route("/")
 def index():
-    return make_response({"message":"app running"}, 200)
+    return make_response({"message":"app running"}, 201)
+
 
 @app.route("/heroes", methods=["GET"])
 def heroes():
@@ -13,51 +12,105 @@ def heroes():
     hero_list = []
     for hero in heroes:
         hero_list.append(hero.to_dict(only=["id", "name", "super_name"]))
-    return jsonify(hero_list)
+    return make_response(hero_list, 201)
+
 
 @app.route("/heroes/<int:hero_id>", methods=["GET"])
 def get_hero(hero_id):
     hero = Hero.query.filter_by(id = hero_id).first()
 
     if not hero:
-        return jsonify({"error": "Hero not found"})
+        return make_response({"error": "Hero not found"}, 404)
     
     hero_res = hero.to_dict(only=["id", "name", "super_name"])
 
     hp = HeroPower.query.filter_by(hero_id = hero.id).first()
-    hp = hp.to_dict(only=["id", "strength", "hero_id", "power_id"])
+    hp_dict = hp.to_dict(only=["id", "strength", "hero_id", "power_id"])
 
-    power = Power.query.filter_by(id=hp["power_id"]).first()
+    power = Power.query.filter_by(id=hp_dict["power_id"]).first()
+    power_dict =  power.to_dict(only=["id", "name", "description"])
 
-    hp["power"] = power.to_dict(only=["id", "name", "description"])
-    hero_res["hero_powers"] = hp
+    hp_dict["power"] = power_dict
+    hero_res["hero_powers"] = [hp_dict] 
 
-    return jsonify(hero_res)
+    return make_response(hero_res, 201)
+
 
 @app.route("/powers", methods=["GET"])
 def powers():
     powers = Power.query.all()
     power_list = []
+
     for power in powers:
         power_list.append(power.to_dict(only=["id", "name", "description"]))
-    return jsonify(power_list)
+
+    return make_response(power_list, 201)
+
+
+@app.route("/powers/<int:id>", methods=["PATCH"])
+def patch_power(id):
+    power = Power.query.get(id)
+
+    if not power:
+        return make_response({"error": "Power not found"}, 404)
+    
+    data = request.get_json()
+
+    if not data:
+        return make_response({"error": "Invalid data"}, 400)
+    
+    try:
+        if 'description' or 'name' in data:
+            if 'name' in data:
+                power.name = data["name"]
+            else:
+                power.description = data["description"]
+
+            db.session.commit()
+            return make_response(power.to_dict(only=["id", "name", "description"]), 201)
+        else:
+            return make_response({"errors": ["validation errors"]}, 400)
+    
+    except KeyError:
+        return make_response({"errors": ["validation errors"]}, 400)
+
 
 @app.route("/powers/<int:id>", methods=["GET"])
 def get_power(id):
     powers = Power.query.filter_by(id=id).first()
     
     if not powers:
-        return jsonify({"error":"Power not found"})
+        return make_response({"error":"Power not found"}, 404)
     
-    return jsonify(powers.to_dict(only=["id", "name", "description"]))
+    return make_response(powers.to_dict(only=["id", "name", "description"]), 201)
 
-@app.route("/hero-powers")
-def hero_powers():
-    hero_powers = HeroPower.query.all()
-    hero_power_list = []
-    for hero_power in hero_powers:
-        hero_power_list.append(hero_power.to_dict(only=["id", "strength", "hero_id", "power_id"]))
-    return jsonify(hero_power_list)
+
+@app.route("/hero_powers", methods=["POST"])
+def post_hero_power():
+    data = request.get_json()
+    if not data:
+        return make_response( {"errors": "invalid data"}, 400)
+    
+    try:
+        new_hp = HeroPower(
+            strength=data["strength"],
+            power_id=data["power_id"],
+            hero_id=data["hero_id"]
+        )
+        db.session.add(new_hp)
+        db.session.commit()
+
+        hero = Hero.query.filter_by(id=data["hero_id"]).first()
+        power = Power.query.filter_by(id=data["power_id"]).first()
+
+        hp_dict = new_hp.to_dict(only=["id", "strength", "hero_id", "power_id"])
+        hp_dict["hero"] = hero.to_dict(only=["id", "name", "super_name"])
+        hp_dict["power"] = power.to_dict(only=["id", "name", "description"])
+
+        return make_response(hp_dict, 201)
+    except KeyError:
+        return make_response({"errors": ["validation errors"]}, 400)
+
 
 if __name__=="__main__":
     app.run(debug=True)
