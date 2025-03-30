@@ -1,5 +1,5 @@
-from flask import request, jsonify, make_response
-from models import Hero, HeroPower, Power, db, migrate, app
+from flask import request, make_response
+from models import Hero, HeroPower, Power, db, app
 
 @app.route("/")
 def index():
@@ -87,14 +87,6 @@ def post_hero_power():
         db.session.add(new_hp)
         db.session.commit()
 
-        # hero = Hero.query.filter_by(id=data["hero_id"]).first()
-        # power = Power.query.filter_by(id=data["power_id"]).first()
-
-        # hp_dict = new_hp.to_dict(only=["id", "strength", "hero_id", "power_id"])
-        # hp_dict["hero"] = hero.to_dict(only=["id", "name", "super_name"])
-        # hp_dict["power"] = power.to_dict(only=["id", "name", "description"])
-
-        # return make_response(hp_dict, 201)
         return make_response(new_hp.to_dict(), 201)
     except KeyError:
         return make_response({"errors": ["validation errors"]}, 400)

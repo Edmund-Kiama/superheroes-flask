@@ -87,29 +87,3 @@ class HeroPower(db.Model, SerializerMixin):
             raise ValueError(f"Strength: {key} should be either Strong, Average or Weak")
         
         return strength
-
-
-
- # heroes = db.relationship("Hero", secondary=hero_power, back_populates='powers')
-
-
-    # powers = db.relationship("Power", secondary=hero_power, back_populates='heroes')
-    
-#    @property
-#     def description(self):
-#         return self._description
-#     @description.setter
-
-
-
-
-#     @property
-#     def strength(self):
-#         return self._strength
-#     @strength.setter
-#     def strength(self, val):
-#         if val not in ["Strong", "Weak", "Average"]:
-#             raise ValueError("Strength must be either Strong, Weak or Average")
-#         self._strength = val 
-
-
