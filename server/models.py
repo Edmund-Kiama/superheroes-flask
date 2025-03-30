@@ -8,10 +8,17 @@ from flask import Flask
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///superheros.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.json.compact = False
 
-metadata = MetaData(naming_convention={
+convection = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-})
+    "pk": "pk_%(table_name)s"
+}
+
+metadata = MetaData(naming_convention = convection)
 
 db = SQLAlchemy(metadata=metadata)
 migrate = Migrate()
@@ -19,21 +26,20 @@ migrate = Migrate()
 db.init_app(app)
 migrate.init_app(app, db)
 
-
 class Power(db.Model, SerializerMixin):
     __tablename__ = "powers"
     
-    serialization_rules = ("-heropowers",)
+    serialize_rules = ("-hero_powers.power",)
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     description = db.Column(db.String)
     
-    heropowers = db.relationship("HeroPower", back_populates="power", cascade="all, delete-orphan")
+    hero_powers = db.relationship("HeroPower", back_populates="power", cascade="all, delete-orphan")
    
     
     def __repr__(self):
-        return f"<Power {self.id}, {self.name}, {self.description}, {len(self.heropowers)}>"
+        return f"<Power {self.id}, {self.name}, {self.description}, {self.hero_powers}>"
     
     @validates("description")
     def validate_description(self, key, description):
@@ -45,23 +51,23 @@ class Power(db.Model, SerializerMixin):
 class Hero(db.Model, SerializerMixin):
     __tablename__ = "heroes"
     
-    serialization_rules = ("-heropowers",)
+    serialize_rules = ("-hero_powers.hero",)
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     super_name = db.Column(db.String)
     
-    heropowers = db.relationship("HeroPower", back_populates="hero", cascade="all, delete-orphan")
+    hero_powers = db.relationship("HeroPower", back_populates="hero", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Hero {self.id}, {self.name}, {self.super_name}, {len(self.heropowers)}>"
+        return f"<Hero {self.id}, {self.name}, {self.super_name}, {self.hero_powers}>"
     
 
 
 class HeroPower(db.Model, SerializerMixin):
-    __tablename__ = "heropowers"
+    __tablename__ = "hero_powers"
     
-    serialization_rules = ("-power", "-hero")
+    serialize_rules = ("-power.hero_powers", "-hero.hero_powers")
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     strength = db.Column(db.String)  
@@ -69,8 +75,8 @@ class HeroPower(db.Model, SerializerMixin):
     hero_id = db.Column(db.Integer, db.ForeignKey("heroes.id"))
     power_id = db.Column(db.Integer, db.ForeignKey("powers.id"))
 
-    power = db.relationship("Power", back_populates="heropowers")
-    hero = db.relationship("Hero", back_populates="heropowers")
+    power = db.relationship("Power", back_populates="hero_powers")
+    hero = db.relationship("Hero", back_populates="hero_powers")
     
     def __repr__(self):
         return f"<HeroPower {self.id}, {self.hero_id}, {self.power_id}, {self.strength}>"
